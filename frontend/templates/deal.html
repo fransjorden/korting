@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}{{ deal.title }} - {{ deal.discount_percentage }}% Korting - kort.ing{% endblock %}
+
+{% block description %}{{ deal.title }} nu met {{ deal.discount_percentage }}% korting bij {{ deal.merchant }}. Van {{ deal.formatted_original_price }} voor {{ deal.formatted_sale_price }}!{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Breadcrumb -->
+    <nav class="text-sm mb-6">
+        <ol class="flex items-center space-x-2 text-gray-500">
+            <li><a href="/" class="hover:text-korting-orange">Home</a></li>
+            <li>/</li>
+            <li><a href="/?category={{ deal.category }}" class="hover:text-korting-orange capitalize">{{ deal.category }}</a></li>
+            <li>/</li>
+            <li class="text-gray-900 truncate max-w-xs">{{ deal.title }}</li>
+        </ol>
+    </nav>
+
+    <!-- Main deal card -->
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div class="grid md:grid-cols-2 gap-0">
+            <!-- Image -->
+            <div class="relative bg-gray-100">
+                <img
+                    src="{{ deal.image_url }}"
+                    alt="{{ deal.title }}"
+                    class="w-full h-full object-cover min-h-[300px] md:min-h-[400px]"
+                    onerror="this.src='https://via.placeholder.com/600x400?text=Geen+afbeelding'"
+                >
+                <!-- Discount badge -->
+                <div class="absolute top-4 left-4 bg-korting-orange text-white px-3 py-2 rounded-xl text-xl font-bold">
+                    -{{ deal.discount_percentage }}%
+                </div>
+            </div>
+
+            <!-- Details -->
+            <div class="p-6 md:p-8 flex flex-col">
+                <!-- Merchant -->
+                <div class="flex items-center space-x-3 mb-4">
+                    <img
+                        src="{{ deal.merchant_logo }}"
+                        alt="{{ deal.merchant }}"
+                        class="w-8 h-8 rounded object-contain"
+                        onerror="this.style.display='none'"
+                    >
+                    <span class="text-gray-600 font-medium">{{ deal.merchant }}</span>
+                </div>
+
+                <!-- Title -->
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                    {{ deal.title }}
+                </h1>
+
+                <!-- Description -->
+                {% if deal.description %}
+                <p class="text-gray-600 mb-6">{{ deal.description }}</p>
+                {% endif %}
+
+                <!-- Prices -->
+                <div class="flex items-baseline space-x-3 mb-6">
+                    <span class="text-3xl font-bold text-korting-orange">{{ deal.formatted_sale_price }}</span>
+                    <span class="text-xl text-gray-400 line-through">{{ deal.formatted_original_price }}</span>
+                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">
+                        Bespaar {{ "€%.2f"|format(deal.original_price - deal.sale_price)|replace(".", ",") }}
+                    </span>
+                </div>
+
+                <!-- Coupon code -->
+                {% if deal.coupon_code %}
+                <div class="bg-korting-orange-light border-2 border-dashed border-korting-orange rounded-xl p-4 mb-6">
+                    <p class="text-sm text-gray-600 mb-2">Gebruik deze kortingscode:</p>
+                    <div class="flex items-center gap-3">
+                        <code class="flex-grow bg-white border border-korting-orange rounded-lg px-4 py-3 text-lg font-mono font-bold text-center">
+                            {{ deal.coupon_code }}
+                        </code>
+                        <button
+                            onclick="copyCode('{{ deal.coupon_code }}', this)"
+                            class="px-4 py-3 bg-korting-orange hover:bg-korting-orange-dark text-white rounded-lg font-semibold transition"
+                        >
+                            <span class="copy-text">Kopieer</span>
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- CTA Button -->
+                <a
+                    href="/go/{{ deal.id }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="w-full bg-korting-orange hover:bg-korting-orange-dark text-white text-center py-4 rounded-xl font-bold text-lg transition mb-4"
+                >
+                    Naar {{ deal.merchant }} →
+                </a>
+
+                <!-- Meta info -->
+                <div class="flex flex-wrap gap-4 text-sm text-gray-500 mt-auto pt-4 border-t">
+                    <div class="flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span>Geldig t/m {{ deal.formatted_valid_until }}</span>
+                    </div>
+                    {% if deal.is_expiring_soon %}
+                    <span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">⚡ Verloopt binnenkort!</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Related deals -->
+    {% if related_deals %}
+    <div class="mt-12">
+        <h2 class="text-xl font-bold text-gray-900 mb-6">Vergelijkbare deals</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {% for deal in related_deals %}
+            <article class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
+                <a href="/deal/{{ deal.id }}" class="block relative">
+                    <div class="aspect-video bg-gray-100 overflow-hidden">
+                        <img
+                            src="{{ deal.image_url }}"
+                            alt="{{ deal.title }}"
+                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                        >
+                    </div>
+                    <div class="absolute top-2 left-2 bg-korting-orange text-white px-2 py-1 rounded text-sm font-bold">
+                        -{{ deal.discount_percentage }}%
+                    </div>
+                </a>
+                <div class="p-4">
+                    <a href="/deal/{{ deal.id }}">
+                        <h3 class="font-semibold text-gray-900 line-clamp-2 hover:text-korting-orange transition">
+                            {{ deal.title }}
+                        </h3>
+                    </a>
+                    <div class="flex items-baseline space-x-2 mt-2">
+                        <span class="font-bold text-korting-orange">{{ deal.formatted_sale_price }}</span>
+                        <span class="text-sm text-gray-400 line-through">{{ deal.formatted_original_price }}</span>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

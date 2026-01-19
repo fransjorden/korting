@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}{% if query %}Zoekresultaten voor "{{ query }}"{% else %}Zoeken{% endif %} - kort.ing{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Page header -->
+    <div class="mb-6">
+        {% if query %}
+        <h1 class="text-2xl font-bold text-gray-900">
+            Zoekresultaten voor "{{ query }}"
+        </h1>
+        <p class="text-gray-500 text-sm mt-1">{{ total_results }} resultaten gevonden</p>
+        {% else %}
+        <h1 class="text-2xl font-bold text-gray-900">Zoeken</h1>
+        <p class="text-gray-500 text-sm mt-1">Zoek naar deals, winkels of producten</p>
+        {% endif %}
+    </div>
+
+    <!-- Results -->
+    {% if deals %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {% for deal in deals %}
+        <article class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
+            <!-- Image -->
+            <a href="/deal/{{ deal.id }}" class="block relative">
+                <div class="aspect-square bg-gray-100 overflow-hidden">
+                    <img
+                        src="{{ deal.image_url }}"
+                        alt="{{ deal.title }}"
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        onerror="this.src='https://via.placeholder.com/400x400?text=Geen+afbeelding'"
+                    >
+                </div>
+
+                <!-- Discount badge -->
+                <div class="absolute top-2 left-2 bg-korting-orange text-white px-2 py-1 rounded-lg text-sm font-bold">
+                    -{{ deal.discount_percentage }}%
+                </div>
+            </a>
+
+            <!-- Content -->
+            <div class="p-4">
+                <!-- Merchant -->
+                <div class="flex items-center space-x-2 mb-2">
+                    <img
+                        src="{{ deal.merchant_logo }}"
+                        alt="{{ deal.merchant }}"
+                        class="w-5 h-5 rounded object-contain"
+                        onerror="this.style.display='none'"
+                    >
+                    <span class="text-xs text-gray-500 font-medium">{{ deal.merchant }}</span>
+                </div>
+
+                <!-- Title -->
+                <a href="/deal/{{ deal.id }}">
+                    <h2 class="font-semibold text-gray-900 line-clamp-2 hover:text-korting-orange transition min-h-[3rem]">
+                        {{ deal.title }}
+                    </h2>
+                </a>
+
+                <!-- Prices -->
+                <div class="flex items-baseline space-x-2 mt-2">
+                    <span class="text-lg font-bold text-korting-orange">{{ deal.formatted_sale_price }}</span>
+                    <span class="text-sm text-gray-400 line-through">{{ deal.formatted_original_price }}</span>
+                </div>
+
+                <!-- Coupon code -->
+                {% if deal.coupon_code %}
+                <div class="mt-3 flex items-center gap-2">
+                    <code class="flex-grow bg-gray-100 border border-dashed border-gray-300 rounded px-2 py-1 text-sm font-mono text-center">
+                        {{ deal.coupon_code }}
+                    </code>
+                    <button
+                        onclick="copyCode('{{ deal.coupon_code }}', this)"
+                        class="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition"
+                        title="Kopieer code"
+                    >
+                        <span class="copy-text">Kopieer</span>
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- CTA Button -->
+                <a
+                    href="/go/{{ deal.id }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="mt-4 block w-full bg-korting-orange hover:bg-korting-orange-dark text-white text-center py-2.5 rounded-lg font-semibold transition"
+                >
+                    Bekijk deal →
+                </a>
+
+                <!-- Valid until -->
+                <p class="text-xs text-gray-400 text-center mt-2">
+                    Geldig t/m {{ deal.formatted_valid_until }}
+                </p>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    {% elif query %}
+    <!-- No results -->
+    <div class="text-center py-16">
+        <div class="text-6xl mb-4">🔍</div>
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">Geen resultaten gevonden</h2>
+        <p class="text-gray-500 mb-4">Probeer een andere zoekterm of bekijk alle deals.</p>
+        <a href="/" class="text-korting-orange hover:underline font-medium">Bekijk alle deals →</a>
+    </div>
+
+    {% else %}
+    <!-- Empty search -->
+    <div class="text-center py-16">
+        <div class="text-6xl mb-4">🔎</div>
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">Waar ben je naar op zoek?</h2>
+        <p class="text-gray-500 mb-6">Typ een zoekterm om deals te vinden.</p>
+
+        <!-- Popular searches -->
+        <div class="max-w-md mx-auto">
+            <p class="text-sm text-gray-500 mb-3">Populaire zoekopdrachten:</p>
+            <div class="flex flex-wrap justify-center gap-2">
+                <a href="/zoeken?q=iPhone" class="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm hover:border-korting-orange hover:text-korting-orange transition">iPhone</a>
+                <a href="/zoeken?q=Nike" class="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm hover:border-korting-orange hover:text-korting-orange transition">Nike</a>
+                <a href="/zoeken?q=Dyson" class="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm hover:border-korting-orange hover:text-korting-orange transition">Dyson</a>
+                <a href="/zoeken?q=Samsung" class="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm hover:border-korting-orange hover:text-korting-orange transition">Samsung</a>
+                <a href="/zoeken?q=PlayStation" class="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm hover:border-korting-orange hover:text-korting-orange transition">PlayStation</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

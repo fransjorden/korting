@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}kort.ing - Nederlandse Kortingen & Deals{% endblock %}</title>
+    <meta name="description" content="{% block description %}Vind de beste kortingen, deals en kortingscodes van Nederlandse webshops. Bespaar geld bij Bol.com, Coolblue, Zalando en meer!{% endblock %}">
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'korting-orange': '#FF6B00',
+                        'korting-orange-dark': '#E55A00',
+                        'korting-orange-light': '#FFF4ED',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏷️</text></svg>">
+
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="/static/styles.css">
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl">🏷️</span>
+                    <span class="text-2xl font-bold">
+                        <span class="text-gray-900">kort</span><span class="text-korting-orange">.</span><span class="text-korting-orange">ing</span>
+                    </span>
+                </a>
+
+                <!-- Search bar (desktop) -->
+                <div class="hidden md:block flex-1 max-w-lg mx-8">
+                    <form action="/zoeken" method="get" class="relative">
+                        <input
+                            type="text"
+                            name="q"
+                            placeholder="Zoek deals, winkels of producten..."
+                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition"
+                            value="{{ query if query else '' }}"
+                        >
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </form>
+                </div>
+
+                <!-- Mobile search toggle -->
+                <button id="mobile-search-toggle" class="md:hidden p-2 text-gray-600 hover:text-korting-orange">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile search bar (hidden by default) -->
+            <div id="mobile-search" class="md:hidden pb-4 hidden">
+                <form action="/zoeken" method="get" class="relative">
+                    <input
+                        type="text"
+                        name="q"
+                        placeholder="Zoek deals..."
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none"
+                        value="{{ query if query else '' }}"
+                    >
+                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </form>
+            </div>
+        </div>
+
+        <!-- Category navigation -->
+        <nav class="border-t border-gray-100 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center space-x-1 overflow-x-auto py-2 scrollbar-hide">
+                    {% for cat in categories %}
+                    <a
+                        href="/?category={{ cat.slug }}"
+                        class="flex items-center space-x-1 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition
+                            {% if current_category == cat.slug %}
+                                bg-korting-orange text-white
+                            {% else %}
+                                text-gray-600 hover:bg-gray-100
+                            {% endif %}"
+                    >
+                        <span>{{ cat.icon }}</span>
+                        <span>{{ cat.name }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main content -->
+    <main class="flex-grow">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- About -->
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <span class="text-xl">🏷️</span>
+                        <span class="text-xl font-bold text-white">kort.ing</span>
+                    </div>
+                    <p class="text-sm">
+                        De beste kortingen en deals van Nederlandse webshops op een plek.
+                        Bespaar geld op elektronica, mode, wonen en meer!
+                    </p>
+                </div>
+
+                <!-- Categories -->
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Categorieen</h3>
+                    <ul class="space-y-2 text-sm">
+                        {% for cat in categories[:6] %}
+                        <li>
+                            <a href="/?category={{ cat.slug }}" class="hover:text-korting-orange transition">
+                                {{ cat.icon }} {{ cat.name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Info -->
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Informatie</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-korting-orange transition">Over ons</a></li>
+                        <li><a href="#" class="hover:text-korting-orange transition">Contact</a></li>
+                        <li><a href="#" class="hover:text-korting-orange transition">Privacy</a></li>
+                        <li><a href="#" class="hover:text-korting-orange transition">Voorwaarden</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
+                <p>&copy; {{ current_year }} kort.ing - Alle rechten voorbehouden</p>
+                <p class="mt-1 text-gray-500">* Prijzen en beschikbaarheid kunnen afwijken. Wij ontvangen mogelijk een commissie via affiliate links.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/static/script.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

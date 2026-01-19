@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if current_category and current_category != 'all' %}
+    {{ categories | selectattr('slug', 'equalto', current_category) | map(attribute='name') | first }} Kortingen - kort.ing
+{% else %}
+    kort.ing - Beste Nederlandse Kortingen & Deals
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Page header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                {% if current_category and current_category != 'all' %}
+                    {% for cat in categories %}
+                        {% if cat.slug == current_category %}
+                            {{ cat.icon }} {{ cat.name }} Deals
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    🔥 Alle Deals
+                {% endif %}
+            </h1>
+            <p class="text-gray-500 text-sm mt-1">{{ total_deals }} actieve aanbiedingen</p>
+        </div>
+
+        <!-- Sort dropdown -->
+        <div class="mt-4 sm:mt-0">
+            <select
+                id="sort-select"
+                onchange="window.location.href = updateQueryParam('sort', this.value)"
+                class="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 text-sm focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none cursor-pointer"
+            >
+                <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>Nieuwste eerst</option>
+                <option value="discount" {% if current_sort == 'discount' %}selected{% endif %}>Hoogste korting</option>
+                <option value="expiring" {% if current_sort == 'expiring' %}selected{% endif %}>Verloopt binnenkort</option>
+                <option value="price" {% if current_sort == 'price' %}selected{% endif %}>Laagste prijs</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Deals grid -->
+    {% if deals %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {% for deal in deals %}
+        <article class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
+            <!-- Image -->
+            <a href="/deal/{{ deal.id }}" class="block relative">
+                <div class="aspect-square bg-gray-100 overflow-hidden">
+                    <img
+                        src="{{ deal.image_url }}"
+                        alt="{{ deal.title }}"
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        onerror="this.src='https://via.placeholder.com/400x400?text=Geen+afbeelding'"
+                    >
+                </div>
+
+                <!-- Discount badge -->
+                <div class="absolute top-2 left-2 bg-korting-orange text-white px-2 py-1 rounded-lg text-sm font-bold">
+                    -{{ deal.discount_percentage }}%
+                </div>
+
+                <!-- Status badges -->
+                <div class="absolute top-2 right-2 flex flex-col gap-1">
+                    {% if deal.is_new %}
+                    <span class="bg-green-500 text-white px-2 py-0.5 rounded text-xs font-medium">Nieuw</span>
+                    {% endif %}
+                    {% if deal.is_expiring_soon %}
+                    <span class="bg-red-500 text-white px-2 py-0.5 rounded text-xs font-medium">Verloopt snel</span>
+                    {% endif %}
+                </div>
+            </a>
+
+            <!-- Content -->
+            <div class="p-4">
+                <!-- Merchant -->
+                <div class="flex items-center space-x-2 mb-2">
+                    <img
+                        src="{{ deal.merchant_logo }}"
+                        alt="{{ deal.merchant }}"
+                        class="w-5 h-5 rounded object-contain"
+                        onerror="this.style.display='none'"
+                    >
+                    <span class="text-xs text-gray-500 font-medium">{{ deal.merchant }}</span>
+                </div>
+
+                <!-- Title -->
+                <a href="/deal/{{ deal.id }}">
+                    <h2 class="font-semibold text-gray-900 line-clamp-2 hover:text-korting-orange transition min-h-[3rem]">
+                        {{ deal.title }}
+                    </h2>
+                </a>
+
+                <!-- Prices -->
+                <div class="flex items-baseline space-x-2 mt-2">
+                    <span class="text-lg font-bold text-korting-orange">{{ deal.formatted_sale_price }}</span>
+                    <span class="text-sm text-gray-400 line-through">{{ deal.formatted_original_price }}</span>
+                </div>
+
+                <!-- Coupon code -->
+                {% if deal.coupon_code %}
+                <div class="mt-3 flex items-center gap-2">
+                    <code class="flex-grow bg-gray-100 border border-dashed border-gray-300 rounded px-2 py-1 text-sm font-mono text-center">
+                        {{ deal.coupon_code }}
+                    </code>
+                    <button
+                        onclick="copyCode('{{ deal.coupon_code }}', this)"
+                        class="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition"
+                        title="Kopieer code"
+                    >
+                        <span class="copy-text">Kopieer</span>
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- CTA Button -->
+                <a
+                    href="/go/{{ deal.id }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="mt-4 block w-full bg-korting-orange hover:bg-korting-orange-dark text-white text-center py-2.5 rounded-lg font-semibold transition"
+                >
+                    Bekijk deal →
+                </a>
+
+                <!-- Valid until -->
+                <p class="text-xs text-gray-400 text-center mt-2">
+                    Geldig t/m {{ deal.formatted_valid_until }}
+                </p>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav class="mt-8 flex justify-center">
+        <div class="flex items-center space-x-2">
+            {% if page > 1 %}
+            <a
+                href="{{ '?category=' + current_category if current_category != 'all' else '?' }}sort={{ current_sort }}&page={{ page - 1 }}"
+                class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
+                ← Vorige
+            </a>
+            {% endif %}
+
+            <span class="px-4 py-2 text-gray-600">
+                Pagina {{ page }} van {{ total_pages }}
+            </span>
+
+            {% if page < total_pages %}
+            <a
+                href="{{ '?category=' + current_category if current_category != 'all' else '?' }}sort={{ current_sort }}&page={{ page + 1 }}"
+                class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
+                Volgende →
+            </a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="text-center py-16">
+        <div class="text-6xl mb-4">🔍</div>
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">Geen deals gevonden</h2>
+        <p class="text-gray-500 mb-4">Er zijn momenteel geen actieve deals in deze categorie.</p>
+        <a href="/" class="text-korting-orange hover:underline font-medium">Bekijk alle deals →</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateQueryParam(key, value) {
+    const url = new URL(window.location.href);
+    url.searchParams.set(key, value);
+    url.searchParams.set('page', '1'); // Reset to page 1 when changing sort
+    return url.toString();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Approval Queue - kort.ing{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Approval Queue</h1>
+            <p class="text-gray-500 text-sm mt-1">{{ pending_count }} deals wachten op goedkeuring</p>
+        </div>
+
+        <!-- Bulk actions -->
+        <div class="mt-4 sm:mt-0 flex gap-2">
+            <button
+                onclick="bulkApprove()"
+                class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
+            >
+                Alles goedkeuren
+            </button>
+            <button
+                onclick="bulkReject()"
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition"
+            >
+                Alles afwijzen
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-6 flex gap-6">
+        <div>
+            <span class="text-2xl font-bold text-korting-orange">{{ pending_count }}</span>
+            <span class="text-gray-500 text-sm ml-1">in wachtrij</span>
+        </div>
+    </div>
+
+    <!-- Pending deals -->
+    {% if pending_deals %}
+    <div class="space-y-4" id="deals-queue">
+        {% for deal in pending_deals %}
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden deal-card" data-deal-id="{{ deal.id }}">
+            <div class="flex flex-col md:flex-row">
+                <!-- Image -->
+                <div class="md:w-48 h-48 md:h-auto bg-gray-100 flex-shrink-0">
+                    <img
+                        src="{{ deal.image_url }}"
+                        alt="{{ deal.title }}"
+                        class="w-full h-full object-cover"
+                        onerror="this.src='https://via.placeholder.com/200x200?text=Geen+afbeelding'"
+                    >
+                </div>
+
+                <!-- Content -->
+                <div class="flex-grow p-4">
+                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                        <!-- Deal info -->
+                        <div class="flex-grow">
+                            <!-- Source badge -->
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-medium uppercase">
+                                    {{ deal.source }}
+                                </span>
+                                <span class="text-xs text-gray-400">{{ deal.merchant }}</span>
+                            </div>
+
+                            <!-- Title -->
+                            <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ deal.title }}</h2>
+
+                            <!-- Prices -->
+                            <div class="flex items-baseline gap-2 mb-2">
+                                <span class="text-xl font-bold text-korting-orange">{{ deal.formatted_sale_price }}</span>
+                                <span class="text-gray-400 line-through">{{ deal.formatted_original_price }}</span>
+                                <span class="px-2 py-0.5 bg-green-100 text-green-800 rounded text-sm font-medium">
+                                    -{{ deal.discount_percentage }}%
+                                </span>
+                            </div>
+
+                            <!-- Coupon code -->
+                            {% if deal.coupon_code %}
+                            <div class="mb-2">
+                                <code class="px-2 py-1 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                                    {{ deal.coupon_code }}
+                                </code>
+                            </div>
+                            {% endif %}
+
+                            <!-- Category & Source URL -->
+                            <div class="text-sm text-gray-500">
+                                <span class="capitalize">{{ deal.category }}</span>
+                                {% if deal.source_url %}
+                                <span class="mx-2">|</span>
+                                <a href="{{ deal.source_url }}" target="_blank" class="text-blue-500 hover:underline">
+                                    Bron bekijken
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex flex-row lg:flex-col gap-2">
+                            <button
+                                onclick="approveDeal('{{ deal.id }}')"
+                                class="flex-1 lg:w-32 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Goedkeuren
+                            </button>
+                            <button
+                                onclick="rejectDeal('{{ deal.id }}')"
+                                class="flex-1 lg:w-32 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                Afwijzen
+                            </button>
+                            <button
+                                onclick="editDeal('{{ deal.id }}')"
+                                class="flex-1 lg:w-32 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition flex items-center justify-center gap-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                                Bewerken
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="text-center py-16 bg-white rounded-xl shadow-sm">
+        <div class="text-6xl mb-4">🎉</div>
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">Alles verwerkt!</h2>
+        <p class="text-gray-500">Er zijn geen deals in de wachtrij.</p>
+        <a href="/" class="mt-4 inline-block text-korting-orange hover:underline">Bekijk de website →</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit Modal -->
+<div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+            <h3 class="text-lg font-semibold mb-4">Deal bewerken</h3>
+            <form id="edit-form" class="space-y-4">
+                <input type="hidden" id="edit-deal-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Titel</label>
+                    <input type="text" id="edit-title" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Originele prijs</label>
+                        <input type="number" step="0.01" id="edit-original-price" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Actieprijs</label>
+                        <input type="number" step="0.01" id="edit-sale-price" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Couponcode</label>
+                    <input type="text" id="edit-coupon" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Categorie</label>
+                    <select id="edit-category" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent">
+                        {% for cat in categories %}
+                        {% if cat.slug != 'all' %}
+                        <option value="{{ cat.slug }}">{{ cat.name }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex gap-2 pt-4">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-korting-orange hover:bg-korting-orange-dark text-white rounded-lg font-medium transition">
+                        Opslaan & Goedkeuren
+                    </button>
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition">
+                        Annuleren
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Remove deal card from UI
+function removeDealCard(dealId) {
+    const card = document.querySelector(`[data-deal-id="${dealId}"]`);
+    if (card) {
+        card.style.transition = 'all 0.3s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(100px)';
+        setTimeout(() => card.remove(), 300);
+    }
+    updateCounter(-1);
+}
+
+// Update pending counter
+function updateCounter(change) {
+    const counter = document.querySelector('.text-korting-orange');
+    if (counter) {
+        const current = parseInt(counter.textContent);
+        counter.textContent = Math.max(0, current + change);
+    }
+}
+
+// Approve a deal
+async function approveDeal(dealId) {
+    try {
+        const response = await fetch(`/admin/approve/${dealId}`, { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+            removeDealCard(dealId);
+            showToast('Deal goedgekeurd!');
+        }
+    } catch (error) {
+        showToast('Fout bij goedkeuren');
+    }
+}
+
+// Reject a deal
+async function rejectDeal(dealId) {
+    try {
+        const response = await fetch(`/admin/reject/${dealId}`, { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+            removeDealCard(dealId);
+            showToast('Deal afgewezen');
+        }
+    } catch (error) {
+        showToast('Fout bij afwijzen');
+    }
+}
+
+// Bulk approve all
+async function bulkApprove() {
+    const dealIds = Array.from(document.querySelectorAll('[data-deal-id]')).map(el => el.dataset.dealId);
+    if (dealIds.length === 0) return;
+
+    if (!confirm(`Weet je zeker dat je alle ${dealIds.length} deals wilt goedkeuren?`)) return;
+
+    try {
+        const response = await fetch('/admin/bulk-approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deal_ids: dealIds })
+        });
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        }
+    } catch (error) {
+        showToast('Fout bij bulk goedkeuren');
+    }
+}
+
+// Bulk reject all
+async function bulkReject() {
+    const dealIds = Array.from(document.querySelectorAll('[data-deal-id]')).map(el => el.dataset.dealId);
+    if (dealIds.length === 0) return;
+
+    if (!confirm(`Weet je zeker dat je alle ${dealIds.length} deals wilt afwijzen?`)) return;
+
+    try {
+        const response = await fetch('/admin/bulk-reject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deal_ids: dealIds })
+        });
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        }
+    } catch (error) {
+        showToast('Fout bij bulk afwijzen');
+    }
+}
+
+// Edit deal
+function editDeal(dealId) {
+    const card = document.querySelector(`[data-deal-id="${dealId}"]`);
+    if (!card) return;
+
+    // Populate form (basic implementation - could be improved with actual deal data)
+    document.getElementById('edit-deal-id').value = dealId;
+    document.getElementById('edit-title').value = card.querySelector('h2').textContent;
+
+    // Show modal
+    const modal = document.getElementById('edit-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeEditModal() {
+    const modal = document.getElementById('edit-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+// Handle edit form submission
+document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const dealId = document.getElementById('edit-deal-id').value;
+
+    const updates = {
+        title: document.getElementById('edit-title').value,
+        original_price: parseFloat(document.getElementById('edit-original-price').value) || undefined,
+        sale_price: parseFloat(document.getElementById('edit-sale-price').value) || undefined,
+        coupon_code: document.getElementById('edit-coupon').value || null,
+        category: document.getElementById('edit-category').value,
+    };
+
+    // Remove undefined values
+    Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
+
+    try {
+        // Update the deal
+        await fetch(`/admin/update/${dealId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+
+        // Then approve it
+        await fetch(`/admin/approve/${dealId}`, { method: 'POST' });
+
+        removeDealCard(dealId);
+        closeEditModal();
+        showToast('Deal bijgewerkt en goedgekeurd!');
+    } catch (error) {
+        showToast('Fout bij bijwerken');
+    }
+});
+
+// Close modal on outside click
+document.getElementById('edit-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+        closeEditModal();
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    // Escape closes modal
+    if (e.key === 'Escape') {
+        closeEditModal();
+    }
+});
+</script>
+{% endblock %}

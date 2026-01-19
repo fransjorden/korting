@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}{% if editing %}Deal Bewerken{% else %}Nieuwe Deal{% endif %} - Admin - kort.ing{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <a href="/admin" class="text-korting-orange hover:underline inline-flex items-center gap-1 mb-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Terug naar overzicht
+        </a>
+        <h1 class="text-2xl font-bold text-gray-900">
+            {% if editing %}Deal Bewerken{% else %}Nieuwe Deal Toevoegen{% endif %}
+        </h1>
+    </div>
+
+    <!-- Form -->
+    <form
+        action="{% if editing %}/admin/edit/{{ deal.id }}{% else %}/admin/add{% endif %}"
+        method="post"
+        class="bg-white rounded-xl shadow-sm p-6 space-y-6"
+    >
+        <!-- Title -->
+        <div>
+            <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
+                Titel <span class="text-red-500">*</span>
+            </label>
+            <input
+                type="text"
+                id="title"
+                name="title"
+                required
+                value="{{ deal.title if deal else '' }}"
+                placeholder="bijv. Samsung Galaxy S24 Ultra"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition"
+            >
+        </div>
+
+        <!-- Merchant -->
+        <div>
+            <label for="merchant" class="block text-sm font-medium text-gray-700 mb-1">
+                Winkel <span class="text-red-500">*</span>
+            </label>
+            <input
+                type="text"
+                id="merchant"
+                name="merchant"
+                required
+                value="{{ deal.merchant if deal else '' }}"
+                placeholder="bijv. Coolblue, Bol.com, MediaMarkt"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition"
+            >
+        </div>
+
+        <!-- Prices -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="original_price" class="block text-sm font-medium text-gray-700 mb-1">
+                    Originele prijs <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">EUR</span>
+                    <input
+                        type="number"
+                        id="original_price"
+                        name="original_price"
+                        required
+                        step="0.01"
+                        min="0"
+                        value="{{ deal.original_price if deal else '' }}"
+                        placeholder="99.99"
+                        class="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition"
+                    >
+                </div>
+            </div>
+            <div>
+                <label for="sale_price" class="block text-sm font-medium text-gray-700 mb-1">
+                    Actieprijs <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">EUR</span>
+                    <input
+                        type="number"
+                        id="sale_price"
+                        name="sale_price"
+                        required
+                        step="0.01"
+                        min="0"
+                        value="{{ deal.sale_price if deal else '' }}"
+                        placeholder="79.99"
+                        class="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition"
+                    >
+                </div>
+            </div>
+        </div>
+
+        <!-- Discount preview -->
+        <div id="discount-preview" class="hidden bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+            <span class="text-green-800 font-medium">Korting: <span id="discount-value">0</span>%</span>
+        </div>
+
+        <!-- URL -->
+        <div>
+            <label for="affiliate_url" class="block text-sm font-medium text-gray-700 mb-1">
+                Product URL <span class="text-red-500">*</span>
+            </label>
+            <input
+                type="url"
+                id="affiliate_url"
+                name="affiliate_url"
+                required
+                value="{{ deal.affiliate_url if deal else '' }}"
+                placeholder="https://www.coolblue.nl/product/..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition"
+            >
+        </div>
+
+        <!-- Image URL -->
+        <div>
+            <label for="image_url" class="block text-sm font-medium text-gray-700 mb-1">
+                Afbeelding URL <span class="text-red-500">*</span>
+            </label>
+            <input
+                type="url"
+                id="image_url"
+                name="image_url"
+                required
+                value="{{ deal.image_url if deal else '' }}"
+                placeholder="https://..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition"
+            >
+            <p class="text-xs text-gray-500 mt-1">Tip: Rechtsklik op de productafbeelding en kies "Afbeeldingsadres kopieren"</p>
+        </div>
+
+        <!-- Image preview -->
+        <div id="image-preview" class="hidden">
+            <p class="text-sm font-medium text-gray-700 mb-2">Afbeelding preview:</p>
+            <img id="preview-img" src="" alt="Preview" class="w-32 h-32 object-cover rounded-lg border">
+        </div>
+
+        <!-- Category -->
+        <div>
+            <label for="category" class="block text-sm font-medium text-gray-700 mb-1">
+                Categorie <span class="text-red-500">*</span>
+            </label>
+            <select
+                id="category"
+                name="category"
+                required
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition"
+            >
+                <option value="">Selecteer categorie...</option>
+                {% for cat in categories %}
+                {% if cat.slug != 'all' %}
+                <option value="{{ cat.slug }}" {% if deal and deal.category == cat.slug %}selected{% endif %}>
+                    {{ cat.icon }} {{ cat.name }}
+                </option>
+                {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Description (optional) -->
+        <div>
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                Beschrijving <span class="text-gray-400">(optioneel)</span>
+            </label>
+            <textarea
+                id="description"
+                name="description"
+                rows="3"
+                placeholder="Korte beschrijving van de deal..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition resize-none"
+            >{{ deal.description if deal else '' }}</textarea>
+        </div>
+
+        <!-- Coupon code (optional) -->
+        <div>
+            <label for="coupon_code" class="block text-sm font-medium text-gray-700 mb-1">
+                Kortingscode <span class="text-gray-400">(optioneel)</span>
+            </label>
+            <input
+                type="text"
+                id="coupon_code"
+                name="coupon_code"
+                value="{{ deal.coupon_code if deal and deal.coupon_code else '' }}"
+                placeholder="bijv. KORTING20"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition uppercase"
+            >
+        </div>
+
+        <!-- Valid days -->
+        <div>
+            <label for="valid_days" class="block text-sm font-medium text-gray-700 mb-1">
+                Geldig voor (dagen)
+            </label>
+            <select
+                id="valid_days"
+                name="valid_days"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korting-orange focus:border-transparent outline-none transition"
+            >
+                <option value="3">3 dagen</option>
+                <option value="7" selected>7 dagen</option>
+                <option value="14">14 dagen</option>
+                <option value="30">30 dagen</option>
+                <option value="60">60 dagen</option>
+                <option value="90">90 dagen</option>
+            </select>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex gap-4 pt-4 border-t border-gray-200">
+            <button
+                type="submit"
+                class="flex-1 px-6 py-3 bg-korting-orange hover:bg-korting-orange-dark text-white rounded-lg font-medium transition"
+            >
+                {% if editing %}Wijzigingen Opslaan{% else %}Deal Toevoegen{% endif %}
+            </button>
+            <a
+                href="/admin"
+                class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition text-center"
+            >
+                Annuleren
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Calculate and show discount percentage
+function updateDiscount() {
+    const original = parseFloat(document.getElementById('original_price').value) || 0;
+    const sale = parseFloat(document.getElementById('sale_price').value) || 0;
+    const preview = document.getElementById('discount-preview');
+    const value = document.getElementById('discount-value');
+
+    if (original > 0 && sale > 0 && sale < original) {
+        const discount = Math.round(((original - sale) / original) * 100);
+        value.textContent = discount;
+        preview.classList.remove('hidden');
+    } else {
+        preview.classList.add('hidden');
+    }
+}
+
+// Image preview
+function updateImagePreview() {
+    const url = document.getElementById('image_url').value;
+    const preview = document.getElementById('image-preview');
+    const img = document.getElementById('preview-img');
+
+    if (url && url.startsWith('http')) {
+        img.src = url;
+        img.onerror = () => preview.classList.add('hidden');
+        img.onload = () => preview.classList.remove('hidden');
+    } else {
+        preview.classList.add('hidden');
+    }
+}
+
+// Attach event listeners
+document.getElementById('original_price').addEventListener('input', updateDiscount);
+document.getElementById('sale_price').addEventListener('input', updateDiscount);
+document.getElementById('image_url').addEventListener('input', updateImagePreview);
+document.getElementById('image_url').addEventListener('blur', updateImagePreview);
+
+// Run on page load for edit mode
+updateDiscount();
+updateImagePreview();
+</script>
+{% endblock %}

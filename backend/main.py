@@ -1,19 +1,25 @@
-from fastapi import FastAPI, Request, Query
+from fastapi import FastAPI, Request, Query, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
+import hashlib
 
 from .config import CATEGORIES, BASE_DIR
 from .deals_store import (
     get_all_deals,
+    get_all_deals_unfiltered,
     get_deal_by_id,
     search_deals,
     count_deals,
     get_merchants,
+    add_deal,
+    update_deal,
+    delete_deal,
 )
+from .models import Deal, DealStatus
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -47,7 +53,7 @@ def get_base_context(request: Request):
 async def homepage(
     request: Request,
     category: Optional[str] = None,
-    sort: str = Query("newest", regex="^(newest|discount|expiring|price)$"),
+    sort: str = Query("newest", pattern="^(newest|discount|expiring|price)$"),
     page: int = Query(1, ge=1),
 ):
     """Homepage with deal listings"""
@@ -91,7 +97,7 @@ async def homepage(
 async def category_page(
     request: Request,
     category_slug: str,
-    sort: str = Query("newest", regex="^(newest|discount|expiring|price)$"),
+    sort: str = Query("newest", pattern="^(newest|discount|expiring|price)$"),
     page: int = Query(1, ge=1),
 ):
     """Category page"""
@@ -194,3 +200,155 @@ async def api_merchants():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+
+# ============ ADMIN ROUTES ============
+
+def generate_deal_id(merchant: str, title: str) -> str:
+    """Generate a unique deal ID"""
+    content = f"{merchant}:{title}:{datetime.now().isoformat()}"
+    return hashlib.md5(content.encode()).hexdigest()[:12]
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard(request: Request):
+    """Admin dashboard - list all deals"""
+    deals = get_all_deals_unfiltered()
+    # Sort by created_at descending
+    deals.sort(key=lambda d: d.created_at, reverse=True)
+
+    context = get_base_context(request)
+    context.update({
+        "deals": deals,
+        "total_deals": len(deals),
+    })
+
+    return templates.TemplateResponse("admin.html", context)
+
+
+@app.get("/admin/add", response_class=HTMLResponse)
+async def admin_add_form(request: Request):
+    """Show form to add a new deal"""
+    context = get_base_context(request)
+    context.update({
+        "deal": None,
+        "editing": False,
+    })
+
+    return templates.TemplateResponse("admin_form.html", context)
+
+
+@app.post("/admin/add")
+async def admin_add_deal(
+    request: Request,
+    title: str = Form(...),
+    merchant: str = Form(...),
+    original_price: float = Form(...),
+    sale_price: float = Form(...),
+    affiliate_url: str = Form(...),
+    image_url: str = Form(...),
+    category: str = Form(...),
+    description: str = Form(""),
+    coupon_code: str = Form(None),
+    valid_days: int = Form(7),
+):
+    """Add a new deal"""
+    # Calculate discount
+    discount = int(((original_price - sale_price) / original_price) * 100) if original_price > 0 else 0
+
+    deal = Deal(
+        id=generate_deal_id(merchant, title),
+        title=title,
+        description=description,
+        merchant=merchant,
+        merchant_logo=f"https://logo.clearbit.com/{merchant.lower().replace(' ', '')}.nl",
+        original_price=original_price,
+        sale_price=sale_price,
+        discount_percentage=discount,
+        coupon_code=coupon_code if coupon_code else None,
+        affiliate_url=affiliate_url,
+        category=category,
+        image_url=image_url,
+        valid_from=datetime.now(),
+        valid_until=datetime.now() + timedelta(days=valid_days),
+        source="manual",
+        source_url=affiliate_url,
+        status=DealStatus.APPROVED,
+        created_at=datetime.now(),
+        is_active=True,
+    )
+
+    add_deal(deal)
+    return RedirectResponse("/admin", status_code=303)
+
+
+@app.get("/admin/edit/{deal_id}", response_class=HTMLResponse)
+async def admin_edit_form(request: Request, deal_id: str):
+    """Show form to edit a deal"""
+    deal = get_deal_by_id(deal_id)
+    if not deal:
+        return RedirectResponse("/admin")
+
+    context = get_base_context(request)
+    context.update({
+        "deal": deal,
+        "editing": True,
+    })
+
+    return templates.TemplateResponse("admin_form.html", context)
+
+
+@app.post("/admin/edit/{deal_id}")
+async def admin_update_deal(
+    request: Request,
+    deal_id: str,
+    title: str = Form(...),
+    merchant: str = Form(...),
+    original_price: float = Form(...),
+    sale_price: float = Form(...),
+    affiliate_url: str = Form(...),
+    image_url: str = Form(...),
+    category: str = Form(...),
+    description: str = Form(""),
+    coupon_code: str = Form(None),
+    valid_days: int = Form(7),
+):
+    """Update an existing deal"""
+    existing = get_deal_by_id(deal_id)
+    if not existing:
+        return RedirectResponse("/admin")
+
+    # Calculate discount
+    discount = int(((original_price - sale_price) / original_price) * 100) if original_price > 0 else 0
+
+    updated = Deal(
+        id=deal_id,
+        title=title,
+        description=description,
+        merchant=merchant,
+        merchant_logo=f"https://logo.clearbit.com/{merchant.lower().replace(' ', '')}.nl",
+        original_price=original_price,
+        sale_price=sale_price,
+        discount_percentage=discount,
+        coupon_code=coupon_code if coupon_code else None,
+        affiliate_url=affiliate_url,
+        category=category,
+        image_url=image_url,
+        valid_from=existing.valid_from,
+        valid_until=datetime.now() + timedelta(days=valid_days),
+        source=existing.source,
+        source_url=affiliate_url,
+        status=DealStatus.APPROVED,
+        created_at=existing.created_at,
+        is_active=True,
+    )
+
+    update_deal(deal_id, updated)
+    return RedirectResponse("/admin", status_code=303)
+
+
+@app.post("/admin/delete/{deal_id}")
+async def admin_delete_deal(deal_id: str):
+    """Delete a deal"""
+    delete_deal(deal_id)
+    return RedirectResponse("/admin", status_code=303)

@@ -167,3 +167,35 @@ def cleanup_expired_deals():
         return len(deals) - len(active_deals)
 
     return 0
+
+
+def update_deal(deal_id: str, updated_deal: Deal) -> bool:
+    """Update an existing deal"""
+    deals = load_deals()
+
+    for i, deal in enumerate(deals):
+        if deal.id == deal_id:
+            deals[i] = updated_deal
+            save_deals(deals)
+            return True
+
+    return False
+
+
+def delete_deal(deal_id: str) -> bool:
+    """Delete a deal by ID"""
+    deals = load_deals()
+    original_count = len(deals)
+
+    deals = [d for d in deals if d.id != deal_id]
+
+    if len(deals) < original_count:
+        save_deals(deals)
+        return True
+
+    return False
+
+
+def get_all_deals_unfiltered() -> List[Deal]:
+    """Get all deals without filtering (for admin)"""
+    return load_deals()

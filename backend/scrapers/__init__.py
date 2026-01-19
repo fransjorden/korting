@@ -1,4 +1,3 @@
 # Deal scrapers package
 from .base import BaseScraper
-from .pepper import PepperScraper
-from .bol import BolScraper
+from .stores import MultiStoreScraper, STORES, scrape_stores, scrape_category

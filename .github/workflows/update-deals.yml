@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install feedparser requests
+          pip install requests python-dotenv
 
       - name: Run scrapers
         run: |

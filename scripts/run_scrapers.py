@@ -6,8 +6,9 @@ This script is designed to run via GitHub Actions.
 It fetches deals from various sources and saves them to data/deals.json.
 
 Usage:
-    python scripts/run_scrapers.py           # Run all scrapers
-    python scripts/run_scrapers.py pepper    # Run only Pepper scraper
+    python scripts/run_scrapers.py              # Run all store scrapers
+    python scripts/run_scrapers.py electronics  # Run only electronics category
+    python scripts/run_scrapers.py bol coolblue # Run specific stores
 """
 
 import sys
@@ -18,25 +19,22 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend.deals_store import load_deals, save_deals, cleanup_expired_deals
-from backend.scrapers.pepper import PepperScraper
-from backend.scrapers.bol import BolScraper
+from backend.scrapers.stores import MultiStoreScraper, STORES, scrape_category
 from backend.models import DealStatus
 
 
-SCRAPERS = {
-    "pepper": PepperScraper,
-    "bol": BolScraper,
-}
+# Categories available
+CATEGORIES = ["electronics", "food", "fashion", "beauty", "home", "sports"]
 
 
-def run_scraper_and_collect(scraper_class) -> list:
-    """Run a scraper and return the deals (don't save yet)"""
-    scraper = scraper_class()
-    print(f"[{scraper.name}] Fetching deals...")
+def run_stores(stores: list = None) -> list:
+    """Run MultiStoreScraper for given stores (or all)"""
+    scraper = MultiStoreScraper(stores=stores)
+    print(f"[multi] Scraping {len(scraper.stores_to_scrape)} stores...")
 
     try:
         deals = scraper.fetch_deals()
-        print(f"[{scraper.name}] Found {len(deals)} deals")
+        print(f"[multi] Total: {len(deals)} deals")
 
         # Mark all as approved (no approval queue in this version)
         for deal in deals:
@@ -44,7 +42,9 @@ def run_scraper_and_collect(scraper_class) -> list:
 
         return deals
     except Exception as e:
-        print(f"[{scraper.name}] Error: {e}")
+        print(f"[multi] Error: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -59,22 +59,33 @@ def main():
     existing_ids = {d.id for d in existing_deals}
     print(f"Existing deals: {len(existing_deals)}")
 
-    # Collect new deals from scrapers
+    # Collect new deals
     new_deals = []
 
     if len(sys.argv) > 1:
-        # Run specific scraper(s)
-        for scraper_name in sys.argv[1:]:
-            if scraper_name in SCRAPERS:
-                deals = run_scraper_and_collect(SCRAPERS[scraper_name])
-                new_deals.extend(deals)
+        args = sys.argv[1:]
+
+        # Check if argument is a category
+        if args[0] in CATEGORIES:
+            category = args[0]
+            stores = [slug for slug, config in STORES.items() if config.category == category]
+            print(f"Scraping category: {category} ({len(stores)} stores)")
+            new_deals = run_stores(stores)
+        else:
+            # Assume arguments are store slugs
+            valid_stores = [s for s in args if s in STORES]
+            if valid_stores:
+                print(f"Scraping stores: {', '.join(valid_stores)}")
+                new_deals = run_stores(valid_stores)
             else:
-                print(f"Unknown scraper: {scraper_name}")
+                print(f"Unknown stores/category: {args}")
+                print(f"Available stores: {', '.join(STORES.keys())}")
+                print(f"Available categories: {', '.join(CATEGORIES)}")
+                return
     else:
-        # Run all scrapers
-        for name, scraper_class in SCRAPERS.items():
-            deals = run_scraper_and_collect(scraper_class)
-            new_deals.extend(deals)
+        # Run all stores
+        print(f"Scraping ALL stores ({len(STORES)} total)")
+        new_deals = run_stores()
 
     # Filter out duplicates
     unique_new = [d for d in new_deals if d.id not in existing_ids]
